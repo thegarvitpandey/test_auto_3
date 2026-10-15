@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automation Playground: Simple Auth & Store</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ======================================================== -->
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <!-- ======================================================== -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ======================================================== -->
+  <!-- HEADER & NAVIGATION BAR -->
+  <!-- ======================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo / Title -->
+      <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('products')">
+        <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+          <i class="fa-solid fa-boxes-stacked"></i>
+        </div>
+        <div>
+          <h1 class="text-sm font-bold text-slate-900 leading-tight">Automation Playground</h1>
+          <p class="text-xs text-slate-500">Simple Auth & Store</p>
+        </div>
+      </div>
+
+      <!-- Main Navigation Links -->
+      <nav class="flex items-center gap-1 sm:gap-2">
+        <button id="nav-login-btn" onclick="navigate('login')" class="nav-item px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-indigo-600 hover:bg-slate-100" data-testid="nav-login">
+          <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Sign In
+        </button>
+        <button id="nav-products-btn" onclick="navigate('products')" class="nav-item px-3 py-1.5 rounded-lg text-xs font-semibold transition text-indigo-600 bg-indigo-50" data-testid="nav-products">
+          <i class="fa-solid fa-bag-shopping mr-1"></i> Products
+        </button>
+        <button id="nav-api-btn" onclick="navigate('api')" class="nav-item px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-indigo-600 hover:bg-slate-100" data-testid="nav-api-docs">
+          <i class="fa-solid fa-code mr-1"></i> API Playground
+        </button>
+      </nav>
+
+      <!-- User Profile & Cart Controls -->
+      <div class="flex items-center gap-3">
+        <!-- Cart Badge -->
+        <button onclick="navigate('products')" class="relative p-2 text-slate-600 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition" title="Shopping Cart" data-testid="cart-badge-button">
+          <i class="fa-solid fa-cart-shopping text-base"></i>
+          <span id="cart-counter" class="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white shadow-sm" data-testid="cart-count">0</span>
+        </button>
+
+        <!-- User Badge -->
+        <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+          <div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-600 text-xs font-bold" id="user-avatar" data-testid="user-avatar">
+            G
+          </div>
+          <div class="hidden sm:block text-left">
+            <div id="user-display-name" class="text-xs font-bold text-slate-800 leading-none" data-testid="user-status-text">Guest</div>
+            <div id="user-role-badge" class="text-[10px] text-slate-500 font-medium leading-tight">Not signed in</div>
+          </div>
+        </div>
+
+        <!-- Logout Button (Hidden when Guest) -->
+        <button id="header-logout-btn" onclick="performLogout()" class="hidden px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition items-center gap-1.5" data-testid="header-logout-btn">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span class="hidden md:inline">Sign Out</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- MAIN CONTENT CONTAINER -->
+  <!-- ======================================================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 pb-28">
+
+    <!-- ======================================================== -->
+    <!-- VIEW 1: LOGIN & REGISTRATION -->
+    <!-- ======================================================== -->
+    <section id="view-login" class="view-panel hidden py-4">
+      <div class="max-w-md mx-auto">
+
+        <!-- Form Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          
+          <div class="text-center mb-6">
+            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Welcome Back</h2>
+            <p class="text-xs text-slate-500 mt-1">Sign in with your test credentials to continue</p>
+          </div>
+
+          <!-- Error Alert Container -->
+          <div id="login-error-alert" class="hidden mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-start gap-2.5" role="alert" data-testid="error-message">
+            <i class="fa-solid fa-circle-exclamation text-rose-500 mt-0.5 text-sm flex-shrink-0"></i>
+            <div>
+              <span class="font-bold block" id="error-title">Authentication Failed</span>
+              <span id="error-desc" class="text-rose-600">Please provide a valid username and password.</span>
+            </div>
+          </div>
+
+          <!-- Login Form -->
+          <form id="login-form" onsubmit="handleLoginSubmit(event)" novalidate class="space-y-4">
+            
+            <!-- Username -->
+            <div>
+              <label for="username" class="block text-xs font-semibold text-slate-700 mb-1">Username or Email</label>
+              <div class="relative">
+                <i class="fa-regular fa-user absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                <input 
+                  type="text" 
+                  id="username" 
+                  name="username" 
+                  placeholder="e.g. testuser"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition"
+                  data-testid="input-username"
+                  autocomplete="username"
+                />
+              </div>
+            </div>
+
+            <!-- Password -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="password" class="block text-xs font-semibold text-slate-700">Password</label>
+                <button type="button" onclick="togglePasswordVisibility()" class="text-[11px] text-indigo-600 hover:underline" tabindex="-1">
+                  <span id="toggle-pwd-text">Show</span>
+                </button>
+              </div>
+              <div class="relative">
+                <i class="fa-solid fa-lock absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                <input 
+                  type="password" 
+                  id="password" 
+                  name="password" 
+                  placeholder="••••••••"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition"
+                  data-testid="input-password"
+                  autocomplete="current-password"
+                />
+              </div>
+            </div>
+
+            <!-- Remember Me -->
+            <div class="flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  id="remember-me" 
+                  class="w-4 h-4 text-indigo-600 bg-slate-50 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                  data-testid="checkbox-remember"
+                />
+                <span class="text-xs text-slate-600">Remember credentials</span>
+              </label>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              type="submit" 
+              id="login-submit-btn" 
+              class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-lg transition shadow-sm flex items-center justify-center gap-2"
+              data-testid="btn-sign-in"
+            >
+              <span>Sign In</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+
+          </form>
+
+          <!-- Quick Fill Presets for Learners -->
+          <div class="mt-6 pt-5 border-t border-slate-100">
+            <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Quick-Fill Demo Presets
+            </span>
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                type="button" 
+                onclick="fillCredentials('standard_user', 'pass123')"
+                class="px-2.5 py-1.5 text-left bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-xs transition"
+                data-testid="preset-valid-user"
+              >
+                <div class="font-bold flex items-center gap-1">
+                  <i class="fa-solid fa-circle-check text-emerald-600 text-[10px]"></i> Valid User
+                </div>
+                <div class="text-[10px] text-emerald-700 font-mono">standard_user / pass123</div>
+              </button>
+
+              <button 
+                type="button" 
+                onclick="fillCredentials('locked_user', 'pass123')"
+                class="px-2.5 py-1.5 text-left bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 rounded-lg text-xs transition"
+                data-testid="preset-locked-user"
+              >
+                <div class="font-bold flex items-center gap-1">
+                  <i class="fa-solid fa-lock text-rose-600 text-[10px]"></i> Locked User
+                </div>
+                <div class="text-[10px] text-rose-700 font-mono">locked_user / pass123</div>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 2: PRODUCTS / DASHBOARD (PROTECTED VIEW) -->
+    <!-- ======================================================== -->
+    <section id="view-products" class="view-panel block space-y-5">
+      
+      <!-- Protected Gate Alert (Visible when not logged in) -->
+      <div id="unauthenticated-warning" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 text-xs">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 flex-shrink-0 font-bold">
+            <i class="fa-solid fa-shield"></i>
+          </div>
+          <div>
+            <span class="font-bold block">You are browsing in Guest Mode</span>
+            <span class="text-amber-800">You can test the public items. Sign in to test personalized state and persistent sessions.</span>
+          </div>
+        </div>
+        <button onclick="navigate('login')" class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shadow-sm self-start sm:self-auto flex items-center gap-1.5">
+          <i class="fa-solid fa-key text-[10px]"></i> Sign In Now
+        </button>
+      </div>
+
+      <!-- Welcome Banner (Shows username when authenticated) -->
+      <div id="dashboard-welcome-card" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+            Test Environment Active
+          </span>
+          <h2 id="welcome-heading" class="text-lg font-bold text-slate-900 mt-1" data-testid="welcome-heading">
+            Welcome back, <span id="welcome-username" class="text-indigo-600 font-black">Guest</span>!
+          </h2>
+          <p class="text-xs text-slate-500">Practice locator strategies: search, filter dropdown, and stateful cart buttons.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="resetCart()" class="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition" title="Clear current cart count">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Reset Cart
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Filter Controls Toolbar -->
+      <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        
+        <!-- Search Input -->
+        <div class="relative w-full sm:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-400"></i>
+          <input 
+            type="text" 
+            id="product-search-input" 
+            placeholder="Search products by title..." 
+            oninput="handleSearchFilter()"
+            class="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:bg-white"
+            data-testid="input-product-search"
+          />
+        </div>
+
+        <!-- Sort Select Dropdown -->
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <label for="product-sort-select" class="text-xs text-slate-500 whitespace-nowrap">Sort by:</label>
+          <select 
+            id="product-sort-select" 
+            onchange="handleSortFilter()"
+            class="bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 cursor-pointer"
+            data-testid="select-sort"
+          >
+            <option value="featured">Featured</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="name">Product Name (A-Z)</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Product Items Grid -->
+      <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="product-list-container">
+        <!-- Injected via JavaScript -->
+      </div>
+
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- VIEW 3: DUMMY REST API PLAYGROUND & TEST CONSOLE -->
+    <!-- ======================================================== -->
+    <section id="view-api" class="view-panel hidden space-y-5">
+      
+      <!-- Card Overview -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-network-wired text-indigo-600"></i> Dummy REST API Simulator & Interactive Console
+        </h2>
+        <p class="text-xs text-slate-500 mt-1">
+          Every request uses a simulated service worker/interceptor directly inside this page. You can trigger API calls with UI buttons, or automate them using Playwright's <code class="font-mono bg-slate-100 text-indigo-700 px-1 rounded">page.request.post()</code> or route interception.
+        </p>
+      </div>
+
+      <!-- Interactive API Tester -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Left Column: Available Endpoints (5 cols) -->
+        <div class="lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Available Endpoints</h3>
+
+          <!-- Endpoint 1: POST /api/login (Valid) -->
+          <div class="p-3 rounded-xl border border-slate-200 hover:border-indigo-300 transition bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">POST</span>
+              <span class="text-xs font-mono font-semibold text-slate-800">/api/login</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Authenticate with valid credentials to receive a JWT access token.</p>
+            <button onclick="testApiLoginSuccess()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition" data-testid="btn-test-api-login">
+              Send Request (Valid)
+            </button>
+          </div>
+
+          <!-- Endpoint 2: POST /api/login (Invalid 401) -->
+          <div class="p-3 rounded-xl border border-slate-200 hover:border-indigo-300 transition bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">POST</span>
+              <span class="text-xs font-mono font-semibold text-slate-800">/api/login (Bad Pwd)</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Test negative response with invalid credentials (401 Unauthorized).</p>
+            <button onclick="testApiLoginFailure()" class="w-full py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition" data-testid="btn-test-api-login-fail">
+              Send Request (Invalid)
+            </button>
+          </div>
+
+          <!-- Endpoint 3: GET /api/products -->
+          <div class="p-3 rounded-xl border border-slate-200 hover:border-indigo-300 transition bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 font-mono">GET</span>
+              <span class="text-xs font-mono font-semibold text-slate-800">/api/products</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Retrieve catalog JSON list of all available inventory items.</p>
+            <button onclick="testApiGetProducts()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition" data-testid="btn-test-api-products">
+              Send Request (GET List)
+            </button>
+          </div>
+
+          <!-- Endpoint 4: POST /api/logout -->
+          <div class="p-3 rounded-xl border border-slate-200 hover:border-indigo-300 transition bg-slate-50 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 font-mono">POST</span>
+              <span class="text-xs font-mono font-semibold text-slate-800">/api/logout</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Invalidate active token and session cookie.</p>
+            <button onclick="testApiLogout()" class="w-full py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition" data-testid="btn-test-api-logout">
+              Send Request (Logout)
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Response Inspector (7 cols) -->
+        <div class="lg:col-span-7 bg-slate-900 rounded-2xl p-5 shadow-sm text-slate-100 flex flex-col justify-between space-y-3 font-mono">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-terminal text-indigo-400"></i> HTTP Response Inspector
+              </span>
+              <span id="api-status-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700" data-testid="api-status-badge">
+                STANDBY
+              </span>
+            </div>
+
+            <!-- Request / Response Metadata -->
+            <div class="text-[11px] text-slate-400 space-y-1 mb-2">
+              <div>Endpoint: <span id="api-target-url" class="text-indigo-300">Ready</span></div>
+              <div>Latency: <span id="api-response-time" class="text-emerald-400">0ms</span></div>
+            </div>
+
+            <!-- Formatted JSON Payload Box -->
+            <div class="relative">
+              <button onclick="copyApiResponse()" class="absolute right-2 top-2 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] rounded border border-slate-700 transition" title="Copy JSON">
+                <i class="fa-regular fa-copy mr-1"></i> Copy
+              </button>
+              <pre id="api-response-json" class="bg-slate-950 p-3.5 rounded-xl text-emerald-400 text-xs overflow-x-auto max-h-[360px] border border-slate-800/80 leading-relaxed" data-testid="api-response-body">{
+  "status": "ready",
+  "message": "Click any endpoint button on the left to simulate a live REST response."
+}</pre>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Client Interceptor: Active</span>
+            <span>Content-Type: application/json</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- COLLAPSIBLE AUTOMATION CHEATSHEET & LOCATOR HELPER (BOTTOM BAR) -->
+  <!-- ======================================================== -->
+  <aside id="cheatsheet-drawer" class="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-slate-200 shadow-xl transition-transform duration-300 ease-in-out translate-y-[calc(100%-44px)]">
+    
+    <!-- Drawer Toggle Header -->
+    <div onclick="toggleCheatsheet()" class="h-11 px-4 max-w-6xl mx-auto flex items-center justify-between cursor-pointer select-none bg-indigo-50/60 hover:bg-indigo-50 border-b border-slate-200">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-graduation-cap text-indigo-600 text-sm"></i>
+        <span class="text-xs font-bold text-slate-900 tracking-wide">Playwright QA Quick Reference & Recommended Locators</span>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">Beginner Friendly</span>
+      </div>
+      <div class="flex items-center gap-2 text-slate-500 text-xs">
+        <span id="cheat-toggle-label" class="font-medium">Click to Expand</span>
+        <i id="cheat-chevron" class="fa-solid fa-chevron-up transition-transform duration-300 text-xs"></i>
+      </div>
+    </div>
+
+    <!-- Drawer Content -->
+    <div class="max-w-6xl mx-auto p-4 sm:p-5 max-h-64 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      
+      <!-- Box 1: Recommended Locators -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 font-mono">
+        <div class="font-sans font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-crosshairs text-indigo-600"></i> Locators
+        </div>
+        <div class="text-[11px] text-slate-600"># Fill username:</div>
+        <div class="text-indigo-700 bg-white p-1 rounded border border-slate-200">page.get_by_label("Username or Email").fill("standard_user")</div>
+        <div class="text-[11px] text-slate-600 mt-1"># Click Sign In button:</div>
+        <div class="text-indigo-700 bg-white p-1 rounded border border-slate-200">page.get_by_role("button", name="Sign In").click()</div>
+      </div>
+
+      <!-- Box 2: Test Credentials -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
+        <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-key text-emerald-600"></i> Test Accounts
+        </div>
+        <div class="flex justify-between items-center bg-white p-1.5 rounded border border-slate-200 font-mono text-[11px]">
+          <span class="text-emerald-700 font-bold">standard_user</span>
+          <span class="text-slate-500">pass123 (Active)</span>
+        </div>
+        <div class="flex justify-between items-center bg-white p-1.5 rounded border border-slate-200 font-mono text-[11px]">
+          <span class="text-rose-700 font-bold">locked_user</span>
+          <span class="text-slate-500">pass123 (Locked)</span>
+        </div>
+        <div class="text-[11px] text-slate-500 mt-1">Any other combination triggers a 401 invalid credentials error.</div>
+      </div>
+
+      <!-- Box 3: Pytest Test Ideas -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1 text-slate-600">
+        <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-vial-circle-check text-blue-600"></i> Exercises to Automate
+        </div>
+        <div>1. <strong>Happy Path:</strong> Login with valid credentials $\rightarrow$ assert welcome header.</div>
+        <div>2. <strong>Error Validation:</strong> Submit empty inputs $\rightarrow$ assert error alert visible.</div>
+        <div>3. <strong>Locked User:</strong> Login with locked user $\rightarrow$ assert locked account banner.</div>
+        <div>4. <strong>Cart Count:</strong> Click "Add to Cart" $\rightarrow$ verify badge increments to 1.</div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT: DATA, INTERCEPTOR, & UI LOGIC -->
+  <!-- ======================================================== -->
+  <script>
+    // --------------------------------------------------------
+    // MOCK DATA & STATE
+    // --------------------------------------------------------
+    const MOCK_PRODUCTS = [
+      { id: 1, name: "Quality Assurance Hoodie", price: 49.99, tag: "Apparel", stock: "In Stock", inCart: false },
+      { id: 2, name: "Playwright Mechanical Keyboard", price: 129.50, tag: "Hardware", stock: "In Stock", inCart: false },
+      { id: 3, name: "Pytest Ceramic Coffee Mug", price: 18.00, tag: "Accessories", stock: "In Stock", inCart: false },
+      { id: 4, name: "Debug Duck (Stress Reliever)", price: 9.99, tag: "Desk Toy", stock: "In Stock", inCart: false }
+    ];
+
+    let currentProducts = [...MOCK_PRODUCTS];
+    let cartCount = 0;
+    let currentUser = null;
+
+    // --------------------------------------------------------
+    // LOCAL STORAGE / SESSION PERSISTENCE
+    // --------------------------------------------------------
+    function initializeSession() {
+      const savedUser = localStorage.getItem("qa_playground_user");
+      if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          updateUserUI();
+        } catch (e) {
+          currentUser = null;
+        }
+      }
+      renderProducts(currentProducts);
+      updateCartBadge();
+    }
+
+    // --------------------------------------------------------
+    // VIEW NAVIGATION
+    // --------------------------------------------------------
+    function navigate(viewName) {
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('text-indigo-600', 'bg-indigo-50');
+        btn.classList.add('text-slate-600');
+      });
+
+      if (viewName === 'login') {
+        document.getElementById('view-login').classList.remove('hidden');
+        document.getElementById('nav-login-btn').classList.add('text-indigo-600', 'bg-indigo-50');
+      } else if (viewName === 'products') {
+        document.getElementById('view-products').classList.remove('hidden');
+        document.getElementById('nav-products-btn').classList.add('text-indigo-600', 'bg-indigo-50');
+      } else if (viewName === 'api') {
+        document.getElementById('view-api').classList.remove('hidden');
+        document.getElementById('nav-api-btn').classList.add('text-indigo-600', 'bg-indigo-50');
+      }
+    }
+
+    // --------------------------------------------------------
+    // AUTHENTICATION LOGIC (MOCK REST SERVICE)
+    // --------------------------------------------------------
+    function handleLoginSubmit(event) {
+      event.preventDefault();
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const rememberCheckbox = document.getElementById('remember-me');
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      // Reset previous error state
+      hideLoginError();
+
+      // Client validation: empty fields
+      if (!username || !password) {
+        showLoginError("Missing Fields", "Username and password are required.");
+        return;
+      }
+
+      // Call our internal mock API
+      mockApiFetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      }).then(res => {
+        if (res.status === 200) {
+          currentUser = res.data.user;
+          if (rememberCheckbox.checked) {
+            localStorage.setItem("qa_playground_user", JSON.stringify(currentUser));
+          } else {
+            sessionStorage.setItem("qa_playground_user", JSON.stringify(currentUser));
+          }
+          updateUserUI();
+          showToast("Welcome back!", `Signed in as ${currentUser.username}`, "success");
+          usernameInput.value = "";
+          passwordInput.value = "";
+          navigate('products');
+        } else if (res.status === 403) {
+          showLoginError("Account Locked", res.data.error || "Sorry, this account has been locked.");
+        } else {
+          showLoginError("Invalid Credentials", res.data.error || "Invalid username or password.");
+        }
+      });
+    }
+
+    function fillCredentials(user, pass) {
+      document.getElementById('username').value = user;
+      document.getElementById('password').value = pass;
+      hideLoginError();
+      showToast("Credentials Prefilled", `Ready to test with ${user}`, "info");
+    }
+
+    function showLoginError(title, message) {
+      const errorBox = document.getElementById('login-error-alert');
+      document.getElementById('error-title').innerText = title;
+      document.getElementById('error-desc').innerText = message;
+      errorBox.classList.remove('hidden');
+    }
+
+    function hideLoginError() {
+      document.getElementById('login-error-alert').classList.add('hidden');
+    }
+
+    function togglePasswordVisibility() {
+      const pwdInput = document.getElementById('password');
+      const toggleText = document.getElementById('toggle-pwd-text');
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        toggleText.innerText = 'Hide';
+      } else {
+        pwdInput.type = 'password';
+        toggleText.innerText = 'Show';
+      }
+    }
+
+    function performLogout() {
+      mockApiFetch('/api/logout', { method: 'POST' }).then(() => {
+        currentUser = null;
+        localStorage.removeItem("qa_playground_user");
+        sessionStorage.removeItem("qa_playground_user");
+        updateUserUI();
+        showToast("Signed Out", "You have been logged out successfully.", "info");
+        navigate('login');
+      });
+    }
+
+    function updateUserUI() {
+      const userDisplay = document.getElementById('user-display-name');
+      const userRole = document.getElementById('user-role-badge');
+      const userAvatar = document.getElementById('user-avatar');
+      const logoutBtn = document.getElementById('header-logout-btn');
+      const navLoginBtn = document.getElementById('nav-login-btn');
+      const welcomeHeading = document.getElementById('welcome-heading');
+      const welcomeUser = document.getElementById('welcome-username');
+      const warningGate = document.getElementById('unauthenticated-warning');
+
+      if (currentUser) {
+        userDisplay.innerText = currentUser.username;
+        userRole.innerText = "Authenticated";
+        userAvatar.innerText = currentUser.username.charAt(0).toUpperCase();
+        userAvatar.className = "w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-sm";
+        logoutBtn.classList.remove('hidden');
+        logoutBtn.classList.add('flex');
+        navLoginBtn.classList.add('hidden');
+        welcomeUser.innerText = currentUser.username;
+        if (warningGate) warningGate.classList.add('hidden');
+      } else {
+        userDisplay.innerText = "Guest";
+        userRole.innerText = "Not signed in";
+        userAvatar.innerText = "G";
+        userAvatar.className = "w-8 h-8 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-slate-600 text-xs font-bold";
+        logoutBtn.classList.add('hidden');
+        logoutBtn.classList.remove('flex');
+        navLoginBtn.classList.remove('hidden');
+        welcomeUser.innerText = "Guest";
+        if (warningGate) warningGate.classList.remove('hidden');
+      }
+    }
+
+    // --------------------------------------------------------
+    // PRODUCTS & CART LOGIC
+    // --------------------------------------------------------
+    function renderProducts(items) {
+      const grid = document.getElementById('product-grid');
+      grid.innerHTML = '';
+
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-500">
+            <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-400 block"></i>
+            <span class="font-bold text-sm text-slate-700">No matching products found</span>
+            <p class="text-xs text-slate-400 mt-1">Try searching for a different keyword.</p>
+          </div>
+        `;
+        return;
+      }
+
+      items.forEach(product => {
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between hover:border-indigo-200 transition group";
+        card.setAttribute('data-testid', `product-card-${product.id}`);
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-2">
+              <span class="px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">${product.tag}</span>
+              <span class="text-emerald-600 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-circle text-[6px]"></i> ${product.stock}
+              </span>
+            </div>
+            <h3 class="text-xs font-bold text-slate-900 line-clamp-2 mb-1 group-hover:text-indigo-600 transition" data-testid="product-title-${product.id}">
+              ${product.name}
+            </h3>
+            <div class="text-base font-black text-slate-900 mt-2 mb-3" data-testid="product-price-${product.id}">
+              $${product.price.toFixed(2)}
+            </div>
+          </div>
+          <button 
+            type="button"
+            onclick="toggleCartItem(${product.id})"
+            class="w-full py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              product.inCart 
+                ? 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200' 
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
+            }"
+            data-testid="btn-cart-toggle-${product.id}"
+          >
+            <i class="fa-solid ${product.inCart ? 'fa-trash-can' : 'fa-cart-plus'} text-xs"></i>
+            <span>${product.inCart ? 'Remove from Cart' : 'Add to Cart'}</span>
+          </button>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleCartItem(productId) {
+      const item = currentProducts.find(p => p.id === productId);
+      if (!item) return;
+
+      item.inCart = !item.inCart;
+      cartCount = currentProducts.filter(p => p.inCart).length;
+      updateCartBadge();
+      renderProducts(currentProducts);
+
+      if (item.inCart) {
+        showToast("Cart Updated", `Added ${item.name} to your basket.`, "success");
+      } else {
+        showToast("Cart Updated", `Removed ${item.name} from basket.`, "info");
+      }
+    }
+
+    function updateCartBadge() {
+      const badge = document.getElementById('cart-counter');
+      badge.innerText = cartCount;
+    }
+
+    function resetCart() {
+      currentProducts.forEach(p => p.inCart = false);
+      cartCount = 0;
+      updateCartBadge();
+      renderProducts(currentProducts);
+      showToast("Cart Reset", "All items have been cleared from basket.", "info");
+    }
+
+    function handleSearchFilter() {
+      const query = document.getElementById('product-search-input').value.toLowerCase();
+      const filtered = MOCK_PRODUCTS.filter(p => p.name.toLowerCase().includes(query) || p.tag.toLowerCase().includes(query));
+      currentProducts = filtered;
+      handleSortFilter(false);
+    }
+
+    function handleSortFilter(reRender = true) {
+      const sortType = document.getElementById('product-sort-select').value;
+      if (sortType === 'price-asc') {
+        currentProducts.sort((a, b) => a.price - b.price);
+      } else if (sortType === 'price-desc') {
+        currentProducts.sort((a, b) => b.price - a.price);
+      } else if (sortType === 'name') {
+        currentProducts.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        currentProducts.sort((a, b) => a.id - b.id);
+      }
+      if (reRender) renderProducts(currentProducts);
+    }
+
+    // --------------------------------------------------------
+    // SIMULATED REST API INTERCEPTOR
+    // --------------------------------------------------------
+    function mockApiFetch(url, options = {}) {
+      const method = (options.method || 'GET').toUpperCase();
+      let body = {};
+      if (options.body) {
+        try { body = JSON.parse(options.body); } catch (e) { body = {}; }
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          // POST /api/login
+          if (url === '/api/login' && method === 'POST') {
+            if (body.username === 'standard_user' && body.password === 'pass123') {
+              resolve({
+                status: 200,
+                statusText: "OK",
+                data: {
+                  token: "jwt_token_sample_abc123xyz_9821",
+                  user: { id: 101, username: "standard_user", role: "qa_tester" }
+                }
+              });
+            } else if (body.username === 'locked_user') {
+              resolve({
+                status: 403,
+                statusText: "Forbidden",
+                data: { error: "Sorry, this account has been locked." }
+              });
+            } else {
+              resolve({
+                status: 401,
+                statusText: "Unauthorized",
+                data: { error: "Invalid username or password." }
+              });
+            }
+          } 
+          // GET /api/products
+          else if (url === '/api/products' && method === 'GET') {
+            resolve({
+              status: 200,
+              statusText: "OK",
+              data: {
+                total: MOCK_PRODUCTS.length,
+                products: MOCK_PRODUCTS
+              }
+            });
+          }
+          // POST /api/logout
+          else if (url === '/api/logout' && method === 'POST') {
+            resolve({
+              status: 200,
+              statusText: "OK",
+              data: { message: "Session successfully invalidated." }
+            });
+          } else {
+            resolve({
+              status: 404,
+              statusText: "Not Found",
+              data: { error: `Endpoint ${method} ${url} does not exist.` }
+            });
+          }
+        }, 150);
+      });
+    }
+
+    // --------------------------------------------------------
+    // INTERACTIVE API TESTER / CONSOLE HANDLERS
+    // --------------------------------------------------------
+    function updateConsoleDisplay(status, url, startTime, data) {
+      const timeMs = Math.round(performance.now() - startTime);
+      const badge = document.getElementById('api-status-badge');
+      const urlText = document.getElementById('api-target-url');
+      const timeText = document.getElementById('api-response-time');
+      const jsonViewer = document.getElementById('api-response-json');
+
+      urlText.innerText = url;
+      timeText.innerText = `${timeMs}ms`;
+
+      badge.innerText = `${status}`;
+      if (status >= 200 && status < 300) {
+        badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-500/40";
+      } else {
+        badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-500/40";
+      }
+
+      jsonViewer.innerText = JSON.stringify(data, null, 2);
+    }
+
+    function testApiLoginSuccess() {
+      const start = performance.now();
+      mockApiFetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: "standard_user", password: "pass123" })
+      }).then(res => {
+        updateConsoleDisplay(`${res.status} ${res.statusText}`, 'POST /api/login (Valid)', start, res.data);
+      });
+    }
+
+    function testApiLoginFailure() {
+      const start = performance.now();
+      mockApiFetch('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: "wrong_user", password: "bad_password" })
+      }).then(res => {
+        updateConsoleDisplay(`${res.status} ${res.statusText}`, 'POST /api/login (Bad Pwd)', start, res.data);
+      });
+    }
+
+    function testApiGetProducts() {
+      const start = performance.now();
+      mockApiFetch('/api/products', { method: 'GET' }).then(res => {
+        updateConsoleDisplay(`${res.status} ${res.statusText}`, 'GET /api/products', start, res.data);
+      });
+    }
+
+    function testApiLogout() {
+      const start = performance.now();
+      mockApiFetch('/api/logout', { method: 'POST' }).then(res => {
+        updateConsoleDisplay(`${res.status} ${res.statusText}`, 'POST /api/logout', start, res.data);
+      });
+    }
+
+    function copyApiResponse() {
+      const text = document.getElementById('api-response-json').innerText;
+      document.execCommand('copy');
+      showToast("Copied", "JSON response copied to clipboard.", "info");
+    }
+
+    // --------------------------------------------------------
+    // TOAST NOTIFICATIONS
+    // --------------------------------------------------------
+    function showToast(title, message, type = "info") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let borderCol = "border-indigo-200 bg-white text-slate-800";
+      let icon = '<i class="fa-solid fa-circle-info text-indigo-600"></i>';
+      if (type === 'success') {
+        borderCol = "border-emerald-200 bg-white text-slate-800";
+        icon = '<i class="fa-solid fa-circle-check text-emerald-600"></i>';
+      } else if (type === 'error') {
+        borderCol = "border-rose-200 bg-white text-slate-800";
+        icon = '<i class="fa-solid fa-circle-xmark text-rose-600"></i>';
+      }
+
+      toast.className = `p-3 rounded-xl border shadow-lg flex items-start gap-2.5 text-xs pointer-events-auto transition transform translate-y-2 opacity-0 duration-200 ${borderCol}`;
+      toast.innerHTML = `
+        <div class="mt-0.5 text-sm">${icon}</div>
+        <div class="flex-1">
+          <div class="font-bold text-slate-900">${title}</div>
+          <div class="text-slate-600 text-[11px]">${message}</div>
+        </div>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    // --------------------------------------------------------
+    // CHEATSHEET DRAWER TOGGLE
+    // --------------------------------------------------------
+    let cheatsheetOpen = false;
+    function toggleCheatsheet() {
+      const drawer = document.getElementById('cheatsheet-drawer');
+      const chevron = document.getElementById('cheat-chevron');
+      const label = document.getElementById('cheat-toggle-label');
+
+      cheatsheetOpen = !cheatsheetOpen;
+      if (cheatsheetOpen) {
+        drawer.classList.remove('translate-y-[calc(100%-44px)]');
+        drawer.classList.add('translate-y-0');
+        chevron.classList.add('rotate-180');
+        label.innerText = 'Click to Collapse';
+      } else {
+        drawer.classList.add('translate-y-[calc(100%-44px)]');
+        drawer.classList.remove('translate-y-0');
+        chevron.classList.remove('rotate-180');
+        label.innerText = 'Click to Expand';
+      }
+    }
+
+    // --------------------------------------------------------
+    // INITIALIZATION
+    // --------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      initializeSession();
+    });
+  </script>
+</body>
+</html>
